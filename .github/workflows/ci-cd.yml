@@ -6,9 +6,6 @@ on:
       - main
   workflow_dispatch:
 
-env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/minicloud-app
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -16,6 +13,17 @@ jobs:
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
+
+      - name: Verifier les secrets
+        run: |
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+            echo "DOCKERHUB_USERNAME est vide"
+            exit 1
+          fi
+          if [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "DOCKERHUB_TOKEN est vide"
+            exit 1
+          fi
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -32,8 +40,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/minicloud-app:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/minicloud-app:${{ github.sha }}
 
   deploy:
     needs: build-and-push
@@ -48,7 +56,7 @@ jobs:
 
       - name: Pull et lancement avec Docker Compose
         env:
-          APP_IMAGE: ${{ env.IMAGE_NAME }}:latest
+          APP_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/minicloud-app:latest
         run: |
           docker compose -f docker-compose.deploy.yml pull
           docker compose -f docker-compose.deploy.yml up -d
